@@ -2,6 +2,11 @@
 
 API REST para RPG de texto baseado em matemática.
 
+# Contribuidores
+Vinicius Franco
+Luis Eduardo Rodrigues
+Emanuel Mascarenha
+
 ## 🌐 API em Produção
 
 **🔗 URL Base:** `https://v16843rlel.execute-api.us-east-1.amazonaws.com`
