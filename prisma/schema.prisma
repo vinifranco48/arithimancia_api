@@ -1,1 +1,288 @@
-## user, school, npc, monsters, problems, lore, inventario, 
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id           Int         @id @default(autoincrement()) @map("player_id")
+  username     String      @unique 
+  email        String      @unique 
+  passwordHash String      @map("password_hash") 
+  createdAt    DateTime    @default(now()) @map("created_at")
+  lastLogin    DateTime?   @map("last_login")
+  characters   Character[]
+
+  @@index([email])
+  @@index([username])
+  @@map("Player")
+}
+
+model Character {
+  id                Int                    @id @default(autoincrement()) @map("character_id")
+  playerId          Int                    @map("player_id")
+  name              String                 
+  level             Int                    @default(1)
+  experiencePoints  Int                    @default(0) @map("experience_points")
+  schoolId          Int?                   @map("school_id")
+  currentLocationId Int                    @map("current_location_id")
+  maxHealth         Int                    @default(100) @map("max_health")
+  currentHealth     Int                    @default(100) @map("current_health")
+  gold              Int                    @default(0)
+  createdAt         DateTime               @default(now()) @map("created_at")
+  lastLogin         DateTime?              @map("last_login")
+  currentLocation   Location               @relation(fields: [currentLocationId], references: [id])
+  player            Player                 @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  school            School?                @relation(fields: [schoolId], references: [id])
+  achievements      CharacterAchievement[]
+  quests            CharacterQuest[]
+  encounters        Encounter[]
+  inventory         Inventory[]
+  problemAttempts   ProblemAttempt[]
+
+  @@index([playerId])
+  @@index([currentLocationId])
+  @@index([schoolId])
+  @@map("Character")
+}
+
+model School {
+  id           Int         @id @default(autoincrement()) @map("school_id")
+  name         String      @unique 
+  description  String?
+  axiom        String?     
+  healthBonus  Int         @default(0) @map("health_bonus")
+  startingGold Int         @default(100) @map("starting_gold")
+  characters   Character[]
+  npcs         NPC[]
+
+  @@map("School")
+}
+
+model Location {
+  id           Int         @id @default(autoincrement()) @map("location_id")
+  name         String      
+  description  String?
+  locationType String?     @map("location_type") 
+  isSafeZone   Boolean     @default(true) @map("is_safe_zone")
+  characters   Character[]
+  npcs         NPC[]
+
+  @@map("Location")
+}
+
+model NPC {
+  id              Int              @id @default(autoincrement()) @map("npc_id")
+  name            String           
+  locationId      Int?             @map("location_id")
+  schoolId        Int?             @map("school_id")
+  dialogueText    String?          @map("dialogue_text")
+  isMerchant      Boolean          @default(false) @map("is_merchant")
+  location        Location?        @relation(fields: [locationId], references: [id])
+  school          School?          @relation(fields: [schoolId], references: [id])
+  questsGiven     Quest[]
+  questObjectives QuestObjective[]
+
+  @@index([locationId])
+  @@map("NPC")
+}
+
+model Lore {
+  id                Int      @id @default(autoincrement()) @map("lore_id")
+  title             String   
+  content           String?
+  category          String?  
+  relatedEntityType String?  @map("related_entity_type") 
+  relatedEntityId   Int?     @map("related_entity_id")
+  unlockCondition   String?  @map("unlock_condition") 
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@map("Lore")
+}
+
+model Monster {
+  id                  Int              @id @default(autoincrement()) @map("monster_id")
+  name                String           @unique 
+  description         String?
+  baseHealth          Int              @default(10) @map("base_health")
+  mathematicalConcept String?          @map("mathematical_concept") 
+  difficultyLevel     Int              @default(1) @map("difficulty_level")
+  experienceReward    Int              @default(10) @map("experience_reward")
+  goldReward          Int              @default(5) @map("gold_reward")
+  encounters          Encounter[]
+  questObjectives     QuestObjective[]
+
+  @@map("Monster")
+}
+
+model Item {
+  id              Int              @id @default(autoincrement()) @map("item_id")
+  name            String           @unique 
+  description     String?
+  type            String?          
+  healthBonus     Int              @default(0) @map("health_bonus")
+  price           Int              @default(0)
+  isTradeable     Boolean          @default(true) @map("is_tradeable")
+  isConsumable    Boolean          @default(false) @map("is_consumable")
+  inventory       Inventory[]
+  questRewards    Quest[]
+  questObjectives QuestObjective[]
+
+  @@map("Item")
+}
+
+model Inventory {
+  characterId Int       @map("character_id")
+  itemId      Int       @map("item_id")
+  quantity    Int       @default(1)
+  isEquipped  Boolean   @default(false) @map("is_equipped")
+  acquiredAt  DateTime  @default(now()) @map("acquired_at")
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  item        Item      @relation(fields: [itemId], references: [id])
+
+  @@id([characterId, itemId])
+  @@index([characterId])
+  @@index([itemId])
+  @@map("Inventory")
+}
+
+model Problem {
+  id               Int              @id @default(autoincrement()) @map("problem_id")
+  description      String
+  problemType      String?          @map("problem_type") 
+  answer           String           
+  difficultyLevel  Int              @default(1) @map("difficulty_level")
+  hintText         String?          @map("hint_text")
+  timeLimitSeconds Int?             @map("time_limit_seconds")
+  experienceReward Int              @default(5) @map("experience_reward")
+  encounters       Encounter[]
+  attempts         ProblemAttempt[]
+  questObjectives  QuestObjective[]
+
+  @@map("Problem")
+}
+
+model Quest {
+  id               Int              @id @default(autoincrement()) @map("quest_id")
+  title            String           
+  description      String?
+  questGiverNpcId  Int?             @map("quest_giver_npc_id")
+  experienceReward Int              @default(50) @map("experience_reward")
+  goldReward       Int              @default(25) @map("gold_reward")
+  itemRewardId     Int?             @map("item_reward_id")
+  minLevel         Int              @default(1) @map("min_level")
+  isRepeatable     Boolean          @default(false) @map("is_repeatable")
+  characterQuests  CharacterQuest[]
+  itemReward       Item?            @relation(fields: [itemRewardId], references: [id])
+  questGiver       NPC?             @relation(fields: [questGiverNpcId], references: [id])
+  objectives       QuestObjective[]
+
+  @@index([questGiverNpcId])
+  @@map("Quest")
+}
+
+model QuestObjective {
+  id              Int      @id @default(autoincrement()) @map("objective_id")
+  questId         Int      @map("quest_id")
+  description     String?
+  type            String?  
+  targetProblemId Int?     @map("target_problem_id")
+  targetMonsterId Int?     @map("target_monster_id")
+  targetItemId    Int?     @map("target_item_id")
+  targetNpcId     Int?     @map("target_npc_id")
+  targetQuantity  Int      @default(1) @map("target_quantity")
+  orderIndex      Int      @default(0) @map("order_index")
+  quest           Quest    @relation(fields: [questId], references: [id], onDelete: Cascade)
+  targetItem      Item?    @relation(fields: [targetItemId], references: [id])
+  targetMonster   Monster? @relation(fields: [targetMonsterId], references: [id])
+  targetNpc       NPC?     @relation(fields: [targetNpcId], references: [id])
+  targetProblem   Problem? @relation(fields: [targetProblemId], references: [id])
+
+  @@index([questId])
+  @@map("QuestObjective")
+}
+
+model CharacterQuest {
+  characterId           Int       @map("character_id")
+  questId               Int       @map("quest_id")
+  status                String    @default("ACTIVE") 
+  currentObjectiveIndex Int       @default(0) @map("current_objective_index")
+  startedAt             DateTime  @default(now()) @map("started_at")
+  completedAt           DateTime? @map("completed_at")
+  character             Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  quest                 Quest     @relation(fields: [questId], references: [id])
+
+  @@id([characterId, questId])
+  @@index([characterId])
+  @@index([questId])
+  @@index([status])
+  @@map("CharacterQuest")
+}
+
+model ProblemAttempt {
+  id               Int       @id @default(autoincrement()) @map("attempt_id")
+  characterId      Int       @map("character_id")
+  problemId        Int       @map("problem_id")
+  userAnswer       String?   @map("user_answer") 
+  isCorrect        Boolean   @map("is_correct")
+  timeTakenSeconds Int?      @map("time_taken_seconds")
+  attemptedAt      DateTime  @default(now()) @map("attempted_at")
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  problem          Problem   @relation(fields: [problemId], references: [id])
+
+  @@index([characterId])
+  @@index([problemId])
+  @@index([attemptedAt])
+  @@map("ProblemAttempt")
+}
+
+model Encounter {
+  id                     Int       @id @default(autoincrement()) @map("encounter_id")
+  characterId            Int       @map("character_id")
+  monsterId              Int       @map("monster_id")
+  problemId              Int?      @map("problem_id")
+  status                 String    @default("IN_PROGRESS") 
+  monsterCurrentHealth   Int       @map("monster_current_health")
+  characterHealthAtStart Int?      @map("character_health_at_start")
+  startedAt              DateTime  @default(now()) @map("started_at")
+  completedAt            DateTime? @map("completed_at")
+  character              Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  monster                Monster   @relation(fields: [monsterId], references: [id])
+  problem                Problem?  @relation(fields: [problemId], references: [id])
+
+  @@index([characterId])
+  @@index([status])
+  @@map("Encounter")
+}
+
+model Achievement {
+  id                    Int                    @id @default(autoincrement()) @map("achievement_id")
+  name                  String                 @unique 
+  description           String?
+  category              String?                
+  requirementType       String?                @map("requirement_type") 
+  requirementCount      Int                    @default(1) @map("requirement_count")
+  experienceReward      Int                    @default(0) @map("experience_reward")
+  titleReward           String?                @map("title_reward") 
+  characterAchievements CharacterAchievement[]
+
+  @@map("Achievement")
+}
+
+model CharacterAchievement {
+  characterId   Int         @map("character_id")
+  achievementId Int         @map("achievement_id")
+  unlockedAt    DateTime    @default(now()) @map("unlocked_at")
+  progress      Int         @default(0)
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  character     Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@id([characterId, achievementId])
+  @@index([characterId])
+  @@index([achievementId])
+  @@map("CharacterAchievement")
+}
