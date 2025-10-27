@@ -1,0 +1,386 @@
+openapi: 3.0.0
+info:
+  title: Arithimancia API
+  version: 1.0.0
+  description: |
+    API REST para RPG Arithimancia - Sistema de personagens e combate matemático baseado no universo de Harry Potter.
+    
+    ## Autenticação
+    
+    A API utiliza JWT (JSON Web Tokens) para autenticação. Para acessar endpoints protegidos:
+    
+    1. Registre-se ou faça login para obter tokens
+    2. Inclua o access token no header: `Authorization: Bearer <token>`
+    3. Use o refresh token para renovar tokens expirados
+    
+    ## Rate Limiting
+    
+    - Endpoints gerais: 100 requisições por 15 minutos
+    - Endpoints de autenticação: 5 tentativas por 15 minutos  
+    - Endpoints de jogo: 30 requisições por minuto
+    
+    ## Códigos de Erro
+    
+    - `400` - Bad Request: Dados inválidos
+    - `401` - Unauthorized: Token inválido ou ausente
+    - `403` - Forbidden: Sem permissão para o recurso
+    - `404` - Not Found: Recurso não encontrado
+    - `409` - Conflict: Conflito de dados (ex: email já existe)
+    - `422` - Validation Error: Erro de validação
+    - `429` - Rate Limit: Muitas requisições
+    - `500` - Internal Server Error: Erro interno do servidor
+
+  contact:
+    name: Vinicius Franco
+    email: vinifranco48@gmail.com
+    url: https://github.com/vinifranco48/arithimancia_api
+  license:
+    name: ISC
+    url: https://opensource.org/licenses/ISC
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Development server
+  - url: https://arithimancia-api.herokuapp.com/api/v1
+    description: Production server
+
+paths:
+  /health:
+    get:
+      summary: Health check da API
+      tags: [System]
+      responses:
+        '200':
+          description: API funcionando corretamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: healthy
+                      timestamp:
+                        type: string
+                        format: date-time
+                      uptime:
+                        type: number
+                        example: 3600.5
+                      database:
+                        type: string
+                        example: connected
+                      memory:
+                        type: object
+                        properties:
+                          used:
+                            type: number
+                            example: 45
+                          total:
+                            type: number
+                            example: 128
+        '503':
+          description: Serviço indisponível
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtido através do endpoint de login
+
+  schemas:
+    # Base Response Schemas
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Operation completed successfully
+        data:
+          type: object
+          description: Response data
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: Validation failed
+            details:
+              type: object
+              description: Additional error details
+            timestamp:
+              type: string
+              format: date-time
+            path:
+              type: string
+              example: /api/v1/auth/login
+
+    # Authentication Schemas
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          pattern: '^[a-zA-Z0-9_]+$'
+          example: hermione_granger
+          description: Nome de usuário único (apenas letras, números e underscore)
+        email:
+          type: string
+          format: email
+          example: hermione@hogwarts.edu
+          description: Email único do jogador
+        password:
+          type: string
+          minLength: 6
+          example: securePassword123
+          description: Senha com pelo menos 6 caracteres
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: hermione@hogwarts.edu
+        password:
+          type: string
+          example: securePassword123
+
+    AuthTokens:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token válido por 15 minutos
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refreshToken:
+          type: string
+          description: JWT refresh token válido por 7 dias
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    # Player Schemas
+    Player:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: hermione_granger
+        email:
+          type: string
+          format: email
+          example: hermione@hogwarts.edu
+        createdAt:
+          type: string
+          format: date-time
+          example: '2024-01-01T00:00:00.000Z'
+        lastLogin:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2024-01-15T10:30:00.000Z'
+
+    # Character Schemas
+    Character:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Hermione Granger
+        level:
+          type: integer
+          minimum: 1
+          example: 5
+        experiencePoints:
+          type: integer
+          minimum: 0
+          example: 1250
+        gold:
+          type: integer
+          minimum: 0
+          example: 500
+        maxHealth:
+          type: integer
+          minimum: 1
+          example: 100
+        currentHealth:
+          type: integer
+          minimum: 0
+          example: 85
+        playerId:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          nullable: true
+          example: 1
+        currentLocationId:
+          type: integer
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateCharacterRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: Hermione Granger
+          description: Nome do personagem (único por jogador)
+        schoolId:
+          type: integer
+          example: 1
+          description: ID da escola mágica (opcional)
+
+    # Game Schemas
+    School:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Academia de Álgebra Arcana
+        description:
+          type: string
+          example: Escola especializada em magia algébrica e equações místicas
+        bonusType:
+          type: string
+          enum: [EXPERIENCE, GOLD, HEALTH]
+          example: EXPERIENCE
+        bonusValue:
+          type: integer
+          example: 10
+          description: Valor do bônus em porcentagem
+
+    Monster:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Dragão das Derivadas
+        description:
+          type: string
+          example: Uma criatura que respira equações diferenciais
+        level:
+          type: integer
+          example: 3
+        health:
+          type: integer
+          example: 150
+        experienceReward:
+          type: integer
+          example: 75
+        goldReward:
+          type: integer
+          example: 25
+
+    Quest:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: O Mistério dos Números Primos
+        description:
+          type: string
+          example: Descubra o segredo por trás dos números primos mágicos
+        experienceReward:
+          type: integer
+          example: 100
+        goldReward:
+          type: integer
+          example: 50
+        requiredLevel:
+          type: integer
+          example: 1
+        isActive:
+          type: boolean
+          example: true
+
+    Encounter:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        characterId:
+          type: integer
+          example: 1
+        monsterId:
+          type: integer
+          example: 1
+        status:
+          type: string
+          enum: [ACTIVE, COMPLETED, FLED]
+          example: ACTIVE
+        createdAt:
+          type: string
+          format: date-time
+
+tags:
+  - name: System
+    description: Endpoints do sistema (health check, informações)
+  - name: Authentication
+    description: Endpoints para autenticação e gerenciamento de sessão
+  - name: Players
+    description: Endpoints para gerenciamento de perfil do jogador
+  - name: Characters
+    description: Endpoints para criação e gerenciamento de personagens
+  - name: Game
+    description: Endpoints para mecânicas do jogo (combate, missões, inventário)
