@@ -234,7 +234,6 @@ npm run test:watch
 npm run dev              # Desenvolvimento com hot reload
 npm run build            # Build do projeto
 npm start                # Executar em produção
-npm test                 # Executar testes
 npm run db:seed          # Popular banco de dados
 npm run db:reset         # Resetar banco de dados
 npm run sls:offline      # Testar Lambda localmente
