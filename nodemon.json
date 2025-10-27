@@ -3,5 +3,14 @@
         "src"
     ],
     "ext": "js,ts",
-    "exec": "ts-node ./src/index.ts"
+    "exec": "ts-node ./src/server.ts",
+    "env": {
+        "NODE_ENV": "development"
+    },
+    "ignore": [
+        "src/**/*.test.ts",
+        "src/**/*.spec.ts",
+        "node_modules/**/*",
+        "dist/**/*"
+    ]
 }

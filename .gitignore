@@ -7,7 +7,8 @@ pnpm-debug.log*
 
 # Environment / secrets
 .env
-.env.* 
+.env.*
+!.env.example 
 
 # Logs
 logs/
@@ -42,3 +43,23 @@ ehthumbs.db
 # Misc
 *.tgz
 *.local
+
+# Serverless
+.serverless/
+.serverless_plugins/
+
+# Database
+*.db
+*.db-journal
+dev.db
+prisma/dev.db
+
+# AWS
+.aws/
+
+# Test
+*.test.ts.snap
+
+# Temporary files
+migration.sql
+DEPLOY-*.md

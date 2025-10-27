@@ -1,0 +1,109 @@
+service: arithimancia-api
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  memorySize: 1024
+  timeout: 30
+  
+  # Variáveis de ambiente (serão carregadas do .env pelo plugin)
+  environment:
+    NODE_ENV: production
+    IS_LAMBDA: 'true'
+    DATABASE_URL: ${env:DATABASE_URL, ''}
+    DIRECT_URL: ${env:DIRECT_URL, ''}
+    JWT_SECRET: ${env:JWT_SECRET, ''}
+    JWT_ACCESS_EXPIRES_IN: ${env:JWT_ACCESS_EXPIRES_IN, '15m'}
+    JWT_REFRESH_EXPIRES_IN: ${env:JWT_REFRESH_EXPIRES_IN, '7d'}
+    SUPABASE_URL: ${env:SUPABASE_URL, ''}
+    SUPABASE_ANON_KEY: ${env:SUPABASE_ANON_KEY, ''}
+    SUPABASE_SERVICE_ROLE_KEY: ${env:SUPABASE_SERVICE_ROLE_KEY, ''}
+  
+  # IAM Permissions
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: '*'
+
+# Plugins (ordem importa - dotenv deve vir primeiro)
+plugins:
+  - serverless-dotenv-plugin
+  - serverless-offline
+
+# Empacotamento
+package:
+  patterns:
+    - '!**'
+    - 'dist/**'
+    - 'dist/swagger.json'
+    - 'node_modules/**'
+    - 'prisma/schema.prisma'
+    - '!node_modules/@prisma/engines/**'
+    - 'node_modules/@prisma/engines/libquery_engine-*'
+    - '!node_modules/.prisma/client/libquery_engine-*'
+    - 'node_modules/.prisma/client/libquery_engine-rhel-*'
+    - '!node_modules/prisma/**'
+    - '!node_modules/@types/**'
+    - '!node_modules/typescript/**'
+    - '!**/*.md'
+    - '!**/*.map'
+    - '!.git/**'
+    - '!.vscode/**'
+    - '!test/**'
+    - '!tests/**'
+    - '!*.test.js'
+    - '!*.spec.js'
+
+
+
+# Funções Lambda
+functions:
+  api:
+    handler: dist/lambda.handler
+    events:
+      - httpApi:
+          path: /
+          method: ANY
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
+
+# Recursos adicionais
+resources:
+  Resources:
+    # API Gateway Custom Domain (opcional)
+    # ApiGatewayRestApi:
+    #   Type: AWS::ApiGateway::RestApi
+    #   Properties:
+    #     Name: ${self:service}-${self:provider.stage}
+
+# Configurações customizadas
+custom:
+  # Serverless Offline
+  serverless-offline:
+    httpPort: 3000
+    lambdaPort: 3002
+    noPrependStageInUrl: true
+    noAuth: true
+  
+  # DotEnv
+  dotenv:
+    path: .env
+    include:
+      - DATABASE_URL
+      - DIRECT_URL
+      - JWT_SECRET
+      - JWT_ACCESS_EXPIRES_IN
+      - JWT_REFRESH_EXPIRES_IN
+      - SUPABASE_URL
+      - SUPABASE_ANON_KEY
+      - SUPABASE_SERVICE_ROLE_KEY
