@@ -63,3 +63,6 @@ prisma/dev.db
 # Temporary files
 migration.sql
 DEPLOY-*.md
+
+# Kiro IDE
+.kiro/
