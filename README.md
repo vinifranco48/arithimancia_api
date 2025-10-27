@@ -2,7 +2,7 @@
 
 API REST para RPG de texto baseado em matemática.
 
-Contribuidores
+# Contribuidores
 
 Vinicius Franco
 
