@@ -3,9 +3,9 @@
 API REST para RPG de texto baseado em matemática.
 
 # Contribuidores
-Vinicius Franco
-Luis Eduardo Rodrigues
-Emanuel Mascarenha
+. Vinicius Franco
+. Luis Eduardo Rodrigues
+. Emanuel Mascarenha
 
 ## 🌐 API em Produção
 
