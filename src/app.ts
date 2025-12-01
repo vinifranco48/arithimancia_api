@@ -9,9 +9,9 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
 import swaggerUi from 'swagger-ui-express';
-import { corsConfig } from './config/cors';
+import { corsOpenConfig } from './config/cors';
 import { logger } from './config/logger';
-import { RootException } from './exceptions/root';
+import { RootException, HttpException } from './exceptions/root';
 import { createSuccessResponse, createErrorResponse } from './utils/response';
 import { prisma, queryOptimizationMiddleware } from './config/database';
 import { swaggerSpec } from './config/swagger';
@@ -68,14 +68,14 @@ app.use(helmet({
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   // Remove server information
   res.removeHeader('X-Powered-By');
-  
+
   // Add security headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'same-origin');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-  
+
   next();
 });
 
@@ -99,15 +99,15 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   else if (req.path.startsWith('/api-docs')) {
     res.setHeader('Cache-Control', 'public, max-age=3600');
   }
-  
+
   next();
 });
 
 // CORS - deve vir antes do body parser
-app.use(cors(corsConfig));
+app.use(cors(corsOpenConfig));
 
 // Body parsing - DEVE VIR ANTES de qualquer middleware que acesse req.body
-app.use(express.json({ 
+app.use(express.json({
   limit: '10mb',
   strict: true,
 }));
@@ -130,7 +130,7 @@ app.use(queryOptimizationMiddleware);
 // Request logging middleware
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const startTime = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - startTime;
     const logData = {
@@ -159,15 +159,15 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
 app.get('/health', async (req, res) => {
   let dbStatus = 'unknown';
   let dbError = null;
-  
+
   try {
     // Test database connection with timeout
-    const timeoutPromise = new Promise((_, reject) => 
+    const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Database connection timeout')), 5000)
     );
-    
+
     const dbPromise = prisma.$queryRaw`SELECT 1`;
-    
+
     await Promise.race([dbPromise, timeoutPromise]);
     dbStatus = 'connected';
   } catch (error) {
@@ -175,7 +175,7 @@ app.get('/health', async (req, res) => {
     dbStatus = 'disconnected';
     dbError = error instanceof Error ? error.message : 'Unknown error';
   }
-  
+
   // Always return 200 for basic health check
   res.json(createSuccessResponse({
     status: dbStatus === 'connected' ? 'healthy' : 'degraded',
@@ -213,14 +213,14 @@ app.get('/', (req, res) => {
 // Swagger JSON endpoint (sempre disponível)
 app.get('/api-docs.json', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
-  
+
   // Clonar o spec para não modificar o original
   const spec = JSON.parse(JSON.stringify(swaggerSpec));
-  
+
   // Detectar se a requisição vem de localhost ou AWS
   const host = req.get('host') || '';
   const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
-  
+
   // Reordenar servidores baseado no ambiente
   if (isLocalhost && spec.servers && spec.servers.length > 1) {
     // Se localhost, colocar servidor local em primeiro
@@ -230,7 +230,7 @@ app.get('/api-docs.json', (req, res) => {
     ];
   }
   // Se não for localhost (AWS), a ordem já está correta (AWS primeiro)
-  
+
   res.send(spec);
 });
 
@@ -238,7 +238,141 @@ app.get('/api-docs.json', (req, res) => {
 app.get('/api-docs', (req, res) => {
   // Usar URL relativa para funcionar em qualquer ambiente
   const specUrl = '/api-docs.json';
-  
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Arithimancia API Documentation</title>
+      <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.10.5/swagger-ui.css">
+      <style>
+        body {
+          margin: 0;
+          padding: 0;
+        }
+        .topbar {
+          display: none;
+        }
+        #swagger-ui {
+          max-width: 1460px;
+          margin: 0 auto;
+        }
+      </style>
+    </head>
+    <body>
+      <div id="swagger-ui"></div>
+      <script src="https://unpkg.com/swagger-ui-dist@5.10.5/swagger-ui-bundle.js" crossorigin></script>
+      <script src="https://unpkg.com/swagger-ui-dist@5.10.5/swagger-ui-standalone-preset.js" crossorigin></script>
+      <script>
+        window.onload = function() {
+          console.log('Initializing Swagger UI...');
+          console.log('Spec URL:', '${specUrl}');
+          console.log('Current host:', window.location.host);
+          
+          try {
+            window.ui = SwaggerUIBundle({
+              url: '${specUrl}',
+              dom_id: '#swagger-ui',
+              deepLinking: true,
+              presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset
+              ],
+              plugins: [
+                SwaggerUIBundle.plugins.DownloadUrl
+              ],
+              layout: "StandaloneLayout",
+              persistAuthorization: true,
+              displayRequestDuration: true,
+              docExpansion: 'list',
+              filter: true,
+              tryItOutEnabled: true,
+              onComplete: function() {
+                console.log('Swagger UI loaded successfully!');
+              },
+              onFailure: function(error) {
+                console.error('Swagger UI failed to load:', error);
+              }
+            });
+          } catch (error) {
+            console.error('Error initializing Swagger UI:', error);
+            document.getElementById('swagger-ui').innerHTML = 
+              '<div style="padding: 20px; color: red;">Error loading Swagger UI: ' + error.message + '</div>';
+          }
+        };
+      </script>
+    </body>
+    </html>
+  `);
+});
+
+// API Documentation tradicional (apenas em desenvolvimento local)
+if (process.env.NODE_ENV !== 'production' && !process.env.IS_LAMBDA) {
+  app.use('/api-docs-local', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Arithimancia API Documentation',
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      docExpansion: 'none',
+      filter: true,
+      showExtensions: true,
+      showCommonExtensions: true,
+      tryItOutEnabled: true
+    }
+  }));
+}
+
+// API info endpoint
+app.get('/', (req, res) => {
+  res.json(createSuccessResponse({
+    name: 'Arithimancia API',
+    description: 'API REST para RPG Arithimancia - Sistema de personagens e combate matemático',
+    version: process.env.API_VERSION || 'v1',
+    environment: process.env.NODE_ENV || 'development',
+    documentation: '/api-docs',
+    health: '/health',
+    endpoints: {
+      auth: '/api/v1/auth',
+      players: '/api/v1/players',
+      characters: '/api/v1/characters',
+      game: '/api/v1/game'
+    }
+  }));
+});
+
+// Swagger JSON endpoint (sempre disponível)
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+
+  // Clonar o spec para não modificar o original
+  const spec = JSON.parse(JSON.stringify(swaggerSpec));
+
+  // Detectar se a requisição vem de localhost ou AWS
+  const host = req.get('host') || '';
+  const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
+
+  // Reordenar servidores baseado no ambiente
+  if (isLocalhost && spec.servers && spec.servers.length > 1) {
+    // Se localhost, colocar servidor local em primeiro
+    spec.servers = [
+      spec.servers.find((s: any) => s.url.includes('localhost')) || spec.servers[1],
+      spec.servers.find((s: any) => !s.url.includes('localhost')) || spec.servers[0]
+    ];
+  }
+  // Se não for localhost (AWS), a ordem já está correta (AWS primeiro)
+
+  res.send(spec);
+});
+
+// Swagger UI via CDN (funciona em serverless!)
+app.get('/api-docs', (req, res) => {
+  // Usar URL relativa para funcionar em qualquer ambiente
+  const specUrl = '/api-docs.json';
+
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -368,6 +502,17 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
     }));
   }
 
+  // Se é uma exceção do tipo HttpException (usada por UnauthorizedException, etc)
+  if (error instanceof HttpException) {
+    return res.status(error.statusCode).json(createErrorResponse({
+      code: error.errorCode,
+      message: error.message,
+      details: error.errors,
+      timestamp: new Date().toISOString(),
+      path: req.originalUrl
+    }));
+  }
+
   // Erro de validação do Express
   if (error.type === 'entity.parse.failed') {
     return res.status(400).json(createErrorResponse({
@@ -393,15 +538,15 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
   // Erro genérico do servidor
   res.status(500).json(createErrorResponse({
     code: 'INTERNAL_SERVER_ERROR',
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Internal server error' 
+    message: process.env.NODE_ENV === 'production'
+      ? 'Internal server error'
       : error.message,
-    details: process.env.NODE_ENV === 'production' 
-      ? undefined 
+    details: process.env.NODE_ENV === 'production'
+      ? undefined
       : {
-          stack: error.stack,
-          name: error.name
-        },
+        stack: error.stack,
+        name: error.name
+      },
     timestamp: new Date().toISOString(),
     path: req.originalUrl
   }));

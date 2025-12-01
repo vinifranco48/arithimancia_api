@@ -2,6 +2,7 @@
  * Script para gerar o arquivo swagger.json em tempo de build
  */
 
+import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import swaggerJsdoc from 'swagger-jsdoc';

@@ -57,6 +57,13 @@ prisma/dev.db
 # AWS
 .aws/
 
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
 # Test
 *.test.ts.snap
 
@@ -66,3 +73,4 @@ DEPLOY-*.md
 
 # Kiro IDE
 .kiro/
+.claude

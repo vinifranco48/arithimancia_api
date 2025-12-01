@@ -5,7 +5,7 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: nodejs20.x
-  region: us-east-1
+  region: us-east-2
   stage: ${opt:stage, 'dev'}
   memorySize: 1024
   timeout: 30
@@ -41,27 +41,53 @@ plugins:
 
 # Empacotamento
 package:
+  individually: false
+  excludeDevDependencies: true
   patterns:
     - '!**'
     - 'dist/**'
-    - 'dist/swagger.json'
+    - '!dist/node_modules/**'
+    - '!dist/package*.json'
+    - '!dist/prisma/**'
     - 'node_modules/**'
     - 'prisma/schema.prisma'
+    # Exclude Prisma engines except the one we need
     - '!node_modules/@prisma/engines/**'
-    - 'node_modules/@prisma/engines/libquery_engine-*'
     - '!node_modules/.prisma/client/libquery_engine-*'
-    - 'node_modules/.prisma/client/libquery_engine-rhel-*'
+    - '!node_modules/.prisma/client/query_engine-*'
+    - 'node_modules/.prisma/client/libquery_engine-rhel-openssl-3.0.x.so.node'
+    # Exclude dev dependencies
     - '!node_modules/prisma/**'
     - '!node_modules/@types/**'
     - '!node_modules/typescript/**'
+    - '!node_modules/ts-node/**'
+    - '!node_modules/@typescript-eslint/**'
+    - '!node_modules/eslint/**'
+    - '!node_modules/jest/**'
+    - '!node_modules/@jest/**'
+    - '!node_modules/nodemon/**'
+    - '!node_modules/supertest/**'
+    - '!node_modules/serverless/**'
+    - '!node_modules/serverless-offline/**'
+    - '!node_modules/serverless-dotenv-plugin/**'
+    - '!node_modules/serverless-esbuild/**'
+    - '!node_modules/serverless-plugin-layer-manager/**'
+    - 'node_modules/serverless-http/**'
+    - '!node_modules/@serverless/**'
+    # Exclude documentation and tests
     - '!**/*.md'
     - '!**/*.map'
+    - '!**/LICENSE'
+    - '!**/CHANGELOG'
+    - '!**/README'
+    - '!**/*.d.ts'
+    - '!**/test/**'
+    - '!**/tests/**'
+    - '!**/*.test.js'
+    - '!**/*.spec.js'
     - '!.git/**'
     - '!.vscode/**'
-    - '!test/**'
-    - '!tests/**'
-    - '!*.test.js'
-    - '!*.spec.js'
+    - '!coverage/**'
 
 
 

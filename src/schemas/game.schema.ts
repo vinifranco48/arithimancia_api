@@ -26,7 +26,6 @@ export const solveProblemSchema = z.object({
     .max(255, "Resposta deve ter no máximo 255 caracteres")
     .trim(),
   timeTaken: z.number()
-    .int("Tempo deve ser um número inteiro")
     .min(0, "Tempo deve ser não negativo")
     .max(3600, "Tempo máximo é 1 hora (3600 segundos)")
     .optional(),

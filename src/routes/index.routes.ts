@@ -65,7 +65,7 @@ const helmetOptions = {
  */
 const generalRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // Máximo 100 requisições por IP por janela
+  max: 500, // Máximo 500 requisições por IP por janela (aumentado de 100)
   message: {
     success: false,
     error: {
@@ -77,9 +77,12 @@ const generalRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req: Request) => {
-    // Pular rate limiting para health check
-    return req.path === '/health' || req.path === '/';
+    // Pular rate limiting para health check e em ambiente de desenvolvimento/test
+    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+    const isHealthCheck = req.path === '/health' || req.path === '/';
+    return isDev || isHealthCheck;
   }
+  // Removido keyGenerator customizado - usando o padrão que já suporta IPv6 e proxies
 });
 
 /**
@@ -88,7 +91,7 @@ const generalRateLimit = rateLimit({
  */
 const strictRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5, // Máximo 5 tentativas por IP por janela
+  max: 20, // Máximo 20 tentativas por IP por janela (aumentado de 5)
   message: {
     success: false,
     error: {
@@ -98,7 +101,12 @@ const strictRateLimit = rateLimit({
     }
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: (req: Request) => {
+    // Pular em ambiente de desenvolvimento/test
+    return process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+  }
+  // Removido keyGenerator customizado - usando o padrão que já suporta IPv6 e proxies
 });
 
 /**
@@ -107,7 +115,7 @@ const strictRateLimit = rateLimit({
  */
 const gameRateLimit = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minuto
-  max: 30, // Máximo 30 requisições por IP por minuto
+  max: 100, // Máximo 100 requisições por IP por minuto (aumentado de 30)
   message: {
     success: false,
     error: {
@@ -117,7 +125,12 @@ const gameRateLimit = rateLimit({
     }
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: (req: Request) => {
+    // Pular em ambiente de desenvolvimento/test
+    return process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+  }
+  // Removido keyGenerator customizado - usando o padrão que já suporta IPv6 e proxies
 });
 
 // ===== APPLY GLOBAL MIDDLEWARES =====
